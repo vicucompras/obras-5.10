@@ -247,9 +247,10 @@ function openOrderDetail(id){
  <div class="form-grid" style="margin-top:12px">
    <div class="field"><label>Proveedor</label><input id="editProv_${i.id}" value="${esc(i.proveedor||'')}" placeholder="Sin proveedor"></div>
    <div class="field"><label>Precio aceptado</label><input id="editPrice_${i.id}" type="number" min="0" step="0.01" value="${i.precioAceptado||''}" placeholder="Sin precio"></div>
-   <div class="field"><label>Cantidad</label><input id="editQty_${i.id}" type="number" min="${i.recibido||0}" step="0.01" value="${i.cantidad||0}"></div>
+   <div class="field"><label>Cantidad pedida</label><input id="editQty_${i.id}" type="number" min="${i.recibido||0}" step="0.01" value="${i.cantidad||0}"></div>
+   <div class="field"><label>Cantidad recibida</label><input id="editReceived_${i.id}" type="number" min="0" max="${i.cantidad||0}" step="0.01" value="${i.recibido||0}" oninput="updateQuickPending('${i.id}')"></div>
  </div>
- <div style="margin-top:8px">Recibido: <b>${i.recibido||0}</b> · Pendiente: <b id="pending_${i.id}">${f}</b></div>
+ <div style="margin-top:8px">Recibido: <b id="received_${i.id}">${i.recibido||0}</b> · Pendiente: <b id="pending_${i.id}">${f}</b></div>
  <div class="actions" style="margin-top:10px">
    <button class="btn primary" onclick="saveItemQuickEdit('${i.id}')">💾 Guardar cambios</button>
    <button class="btn" onclick="openQuotesModal('${i.id}')">💰 Cotizaciones (${(i.cotizaciones||[]).length})</button>
@@ -259,16 +260,28 @@ function openOrderDetail(id){
  </div>`}).join('')}
  </div></div>`;
 }
+function updateQuickPending(itemId){
+ const qty=Number(document.getElementById('editQty_'+itemId)?.value||0);
+ const received=Number(document.getElementById('editReceived_'+itemId)?.value||0);
+ const pending=Math.max(0,qty-received);
+ const el=document.getElementById('pending_'+itemId);
+ const rec=document.getElementById('received_'+itemId);
+ if(el) el.textContent=pending;
+ if(rec) rec.textContent=received;
+}
 function saveItemQuickEdit(itemId){
  const i=db.items.find(x=>x.id===itemId);if(!i)return;
  const prov=(document.getElementById('editProv_'+itemId)?.value||'').trim();
  const price=Number(document.getElementById('editPrice_'+itemId)?.value||0);
  const qty=Number(document.getElementById('editQty_'+itemId)?.value||0);
- const received=Number(i.recibido||0);
- if(qty<received){alert('La cantidad no puede ser menor que lo ya recibido ('+received+').');return;}
+ const received=Number(document.getElementById('editReceived_'+itemId)?.value||0);
+ if(qty<0){alert('La cantidad pedida no puede ser negativa.');return;}
+ if(received<0){alert('La cantidad recibida no puede ser negativa.');return;}
+ if(received>qty){alert('La cantidad recibida no puede ser mayor que la cantidad pedida ('+qty+').');return;}
  i.proveedor=prov;
  i.precioAceptado=price;
  i.cantidad=qty;
+ i.recibido=received;
  if(prov){
    i.estadoCompra='aceptado';
    i.cotizaciones=i.cotizaciones||[];
